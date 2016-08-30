@@ -14,6 +14,9 @@ from Crypto.Signature import PKCS1_v1_5
 from Crypto.Hash import SHA512
 
 
+def convert_ticks_to_datetime(s):
+    return datetime.datetime(1, 1, 1) + datetime.timedelta(microseconds=int(s)/10)
+
 
 class FairlayPythonClient(object):
 
@@ -90,6 +93,8 @@ class FairlayPythonClient(object):
     def __init__(self):
         super(FairlayPythonClient, self).__init__()
         self.__load_config()
+        self.__last_time_check = None
+        self.__offset = None
 
     def __load_config(self):
         try:
@@ -193,24 +198,26 @@ class FairlayPythonClient(object):
         sign = signer.sign(digest)
         return base64.b64encode(sign)
 
-    def __public_request(self, endpoint, json=True):
-        while True:
-            try:
-                response = requests.get('http://31.172.83.181:8080/free/' + endpoint)
+    def __public_request(self, endpoint, json=True, tries=0):
+        
+        try:
+            response = requests.get('http://31.172.83.181:8080/free/' + endpoint)
 
-                if response == 'XError: Service unavailable':
-                    raise requests.exceptions.ConnectionError
+            if response == 'XError: Service unavailable':
+                raise requests.exceptions.ConnectionError
 
-                if 'XError' in response.text:
-                    return
+            if 'XError' in response.text:
+                return
 
-                if json:
-                    return response.json()
-                else:
-                    return response
-            except requests.exceptions.ConnectionError:
-                pass
-            sleep(6)
+            if json:
+                return response.json()
+            else:
+                return response
+        except requests.exceptions.ConnectionError:
+            time.sleep(6)
+            if tries >= 3:
+                raise requests.exceptions.ConnectionError
+            return self.__public_request(endpoint, json, tries + 1)
 
     def get_markets_and_odds(self, market_filter={}, changed_after=datetime.datetime(2015, 1, 1)):
         '''
@@ -220,13 +227,26 @@ class FairlayPythonClient(object):
             market_filter: dictionary
             change_after: datetime
         '''
-        filters = {'ToID': 10000, 'SoftChangedAfter': changed_after.isoformat()}
+
+        if not self.__last_time_check or self.__last_time_check + datetime.timedelta(minutes=10) < datetime.datetime.now():
+            try:
+                response = self.__public_request('time')
+                if not response:
+                    raise ValueError
+            except Exception:
+                return []
+
+            self.__offset = datetime.datetime.now() - convert_ticks_to_datetime(response)
+            self.__last_time_check = datetime.datetime.now()
+
+        changed = changed_after - datetime.timedelta(seconds=10) - self.__offset
+        filters = {'ToID': 10000, 'SoftChangedAfter': changed.isoformat()}
         filters.update(market_filter)
 
         try:
             response = self.__public_request('markets/{}'.format(json.dumps(filters)))
         except ValueError:
-            return
+            return []
 
         for market in response:
             market['OrdBStr'] = [json.loads(ob) for ob in market['OrdBStr'].split('~') if ob]
@@ -404,7 +424,6 @@ class FairlayPythonClient(object):
             return True
 
 # client = FairlayPythonClient()
-# print client.get_markets_and_odds({'ToID': 10})
 
 
 
