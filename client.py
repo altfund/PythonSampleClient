@@ -424,7 +424,7 @@ class FairlayPythonClient(object):
             return True
 
 # client = FairlayPythonClient()
-
+# print client.get_odds(82339763895)
 
 
 ###############################################################################
@@ -491,29 +491,75 @@ class FairlayOrderMatching(object):
     def __init__(self):
         super(FairlayOrderMatching, self).__init__()
         self.client = FairlayPythonClient()
-        self.create_order()
 
-    def create_order(self):
+    def create_wait_get_matched(self):
         order = {
-            'Mid': 58097313763,
+            'Mid': 82339763895,
             'Rid': 0,
             'Oid': -1,
-            'Am': 10,
-            'Pri': 1.564,
+            'Am': 5,
+            'Pri': 5.645,
             'Sub': '',
             'Type': 0,
             'Boa': 1,
             'Mct': 0
         }
         order = self.client.change_orders([order])[0]
-        self.get_matched(order['PrivID'])
+        
+        if order:
+            order_id = order['PrivID']
 
-    def get_matched(self, order_id):
-        time.sleep(6)
-        temp = self.client.get_orders('matched')
+            time.sleep(6)
+            temp = self.client.get_orders('matched')
 
-        for match in temp:
-            if match['_UserUMOrderID'] == order_id:
-                self.matched_orders.append(match)
+            for match in temp:
+                if match['_UserUMOrderID'] == order_id:
+                    self.matched_orders.append(match)
+
+        return self.matched_orders
+
+    def calculate_position(self, market_id):
+        '''
+            Calculate user position for each runner in the specified market ID
+            Return possible winnings and losing for each runner in BTC
+        '''
+        position = {}
+        matched = self.client.get_orders('matched')
+        orderbook = self.client.get_odds(market_id)
+        
+        for order in matched:
+            m_id = order['_UserOrder']['MarketID']
+            r_id = order['_UserOrder']['RunnerID']
+            is_back = order['_UserOrder']['BidOrAsk'] == 1
+            amount = order['_MatchedOrder']['Amount'] / 1000.0
+            odds = order['_MatchedOrder']['Price']
+            
+            if m_id != market_id:
+                continue
+
+            winnings = losings = 0
+            if is_back:
+                winnings += (amount * odds) - amount
+                losings += -amount
+            else:
+                winnings += -amount
+                losings += (amount * (1 + (1 / (odds - 1)))) - amount
+
+            if r_id in position.keys():
+                position[r_id]['possible_winnings'] += winnings
+                position[r_id]['possible_losings'] += losings
+            else:
+                position[r_id] = {
+                    'possible_winnings': winnings, 
+                    'possible_losings': losings
+                }
+
+        total_losings = sum([m['possible_losings'] for m in position.values()])
+        for key, d in position.items():
+            position[key]['possible_losings'] += total_losings - d['possible_losings']
+
+        return position
 
 # matching = FairlayOrderMatching()
+# print matching.create_wait_get_matched()
+# print matching.calculate_position(82339763895)
