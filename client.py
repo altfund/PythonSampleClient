@@ -102,9 +102,12 @@ class FairlayPythonClient(object):
                 try:
                     temp = json.load(config)
                     self.CONFIG.update(temp)
-                    required_keys = ['PrivateRSAKey', 'PublicRSAKey', 'ID']
-                    if ([x for x in required_keys if x not in self.CONFIG.keys() or not self.CONFIG[x]] or
-                        self.CONFIG['ID'] == 'CHANGETHIS'):
+
+                    if 'ID' not in self.CONFIG.keys() or self.CONFIG['ID'] in ['', 'CHANGETHIS']:
+                        raise EnvironmentError('Missing user ID in config file')
+                    
+                    required_keys = ['PrivateRSAKey', 'PublicRSAKey']
+                    if [x for x in required_keys if x not in self.CONFIG.keys() or not self.CONFIG[x]]:
                         raise EnvironmentError('Missing user ID or Public/Private keys in config file')
                 except ValueError:
                     raise EnvironmentError('Something is wrong with the config file')
