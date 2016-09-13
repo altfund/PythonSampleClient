@@ -20,45 +20,98 @@ def convert_ticks_to_datetime(s):
 
 class FairlayPythonClient(object):
 
-    CATEGORIES = {
-        'soccer': 1,
-        'tenis': 2,
-        'golf': 3,
-        'cricket': 4,
-        'rugbyunion': 5,
-        'boxing': 6,
-        'horseracing': 7,
-        'motorsport': 8,
-        'special': 10,
-        'rugbyleague': 11,
-        'backetball': 12,
-        'americanfootball': 13,
-        'baseball': 14,
-        'politics': 15,
-        'financial': 16,
-        'greyhound': 17,
-        'volleyball': 18,
-        'handball': 19,
-        'darts': 20,
-        'bandy': 21,
-        'wintersports': 22,
-        'bowls': 24,
-        'pool': 25,
-        'snooker': 26,
-        'tabletennis': 27,
-        'chess': 28,
-        'hockey': 30,
-        'fun': 31,
-        'esports': 32,
-        'inplay': 33,
-        'reserved4': 34,
-        'mixedmartialarts': 35,
-        'reserved6': 36,
-        'reserved': 37,
-        'cycling': 38,
-        'reserved9': 39,
-        'bitcoin': 40,
-        'badminton': 42
+    MARKET_CATEGORY = {
+        1: 'Soccer',
+        2: 'Tenis',
+        3: 'Golf',
+        4: 'Cricket',
+        5: 'RugbyUnion',
+        6: 'Boxing',
+        7: 'Horse Racing',
+        8: 'Motorsport',
+        10: 'Special',
+        11: 'Rugby League',
+        12: 'Bascketball',
+        13: 'American Football',
+        14: 'Baseball',
+        15: 'Politics',
+        16: 'Financial',
+        17: 'Greyhound',
+        18: 'Volleyball',
+        19: 'Handball',
+        20: 'Darts',
+        21: 'Bandy',
+        22: 'Winter Sports',
+        24: 'Bowls',
+        25: 'Pool',
+        26: 'Snooker',
+        27: 'Table tennis',
+        28: 'Chess',
+        30: 'Hockey',
+        31: 'Fun',
+        32: 'eSports',
+        33: 'Inplay',
+        34: 'reserved4',
+        35: 'Mixed Martial Arts',
+        36: 'reserved6',
+        37: 'reserved',
+        38: 'Cycling',
+        39: 'reserved9',
+        40: 'Bitcoin',
+        42: 'Badminton'
+    }
+
+    MARKET_TYPE = {
+        0: 'MONEYLINE',
+        1: 'OVER_UNDER',
+        2: 'OUTRIGHT',
+        3: 'GAMESPREAD',
+        4: 'SETSPREAD',
+        5: 'CORRECT_SCORE',
+        6: 'FUTURE',
+        7: 'BASICPREDICTION',
+        8: 'RESERVED2',
+        9: 'RESERVED3',
+        10: 'RESERVED4',
+        11: 'RESERVED5',
+        12: 'RESERVED6'
+
+    }
+
+    MARKET_PERIOD = {
+        0: 'UNDEFINED',
+        1: 'FT',
+        2: 'FIRST_SET',
+        3: 'SECOND_SET',
+        4: 'THIRD_SET',
+        5: 'FOURTH_SET',
+        6: 'FIFTH_SET',
+        7: 'FIRST_HALF',
+        8: 'SECOND_HALF',
+        9: 'FIRST_QUARTER',
+        10: 'SECOND_QUARTER',
+        11: 'THIRD_QUARTER',
+        12: 'FOURTH_QUARTER',
+        13: 'FIRST_PERIOD',
+        14: 'SECOND_PERIOD',
+        15: 'THIRD_PERIOD',
+    }
+
+    MARKET_SETTLEMENT = {
+        0: 'BINARY',
+        1: 'DECIMAL'
+    }
+
+    ORDER_STATE = {
+        0: 'MATCHED',
+        1: 'RUNNER_WON',
+        2: 'RUNNER_HALFWON',
+        3: 'RUNNER_LOST',
+        4: 'RUNNER_HALFLOST',
+        5: 'MAKERVOIDED',
+        6: 'VOIDED',
+        7: 'PENDING',
+        8: 'DECIMAL_RESULT'
     }
 
     ENDPOINTS = {
@@ -229,6 +282,17 @@ class FairlayPythonClient(object):
 
             market_filter: dictionary
             change_after: datetime
+
+        Response: dictionary
+            E.g. {'Ru': [{'RedA': 0.0, 'VisDelay': 3000, 'Name': 'Yes', 'VolMatched': 0.0}, 
+                         {'RedA': 0.0, 'VisDelay': 3000, 'Name': 'No', 'VolMatched': 0.0}], 
+                  'LastSoftCh': '2015-11-30T00:50:09.2443208Z', 'Descr': 'This market resolves to ...', 
+                  'Title': 'Will OKCoin lose customer funds in 2016?', 'OrdBStr': '~', 'MarketCategory': 'Bitcoin', 
+                  'Status': 0, '_Type': 2, 'CatID': 40, 'LastCh': '2015-10-30T06:05:00.7541435Z', 
+                  'Comp': 'Bad News', 'MarketType': 'TAKER', 'OrdBJSON': [], 'Comm': 0.02, 
+                  'ClosD': '2016-10-01T00:00:00', 'Margin': 10000.0, 'ID': 57650700754, 'MaxVal': 0.0, 
+                  'SettlT': 0, 'MinVal': 0.0, 'CreatorName': 'FairMM', 'Pop': 0.0, 'MarketPeriod': 'MAKER', 
+                  'SettlD': '2017-01-01T00:00:00', '_Period': 1, 'SettlementType': 'MAKERTAKER'}
         '''
 
         if not self.__last_time_check or self.__last_time_check + datetime.timedelta(minutes=10) < datetime.datetime.now():
@@ -252,13 +316,31 @@ class FairlayPythonClient(object):
             return []
 
         for market in response:
-            market['OrdBStr'] = [json.loads(ob) for ob in market['OrdBStr'].split('~') if ob]
+            self.__parse_market(market)
         return response
 
+    def __parse_market(self, market):
+        market['MarketCategory'] = self.MARKET_CATEGORY[market['CatID']]
+        market['MarketType'] = self.MARKET_TYPE[market['_Type']]
+        market['MarketPeriod'] = self.MARKET_PERIOD[market['_Period']]
+        market['SettlementType'] = self.MARKET_SETTLEMENT[market['SettlT']]
+        if market['OrdBStr']:
+            market['OrdBJSON'] = [json.loads(ob) for ob in market['OrdBStr'].split('~') if ob]
+
     def get_server_time(self):
+        '''
+        Response: string 
+            E.g. '636093693129714057'
+        '''
         return self.__send_request('get_server_time')
 
     def get_balance(self):
+        '''
+        Response: dictionary 
+            E.g. {'RemainingRequests': 9893, 'PrivReservedFunds': 180.9493999999995, 
+                  'AvailableFunds': 42.4242, 'CreatorUsed': 0.0, 
+                  'SettleUsed': 0.0, 'MaxFunds': 0.0, 'PrivUsedFunds': 25.0}
+        '''
         response = self.__send_request('get_balance')
         if response:
             try:
@@ -268,7 +350,23 @@ class FairlayPythonClient(object):
 
     def get_orders(self, order_type, timestamp=1420070400L, market_id=None):
         '''
+            When two open orders are matched, a Matched Order is created in the PENDING state.  
+            If the maker of the bet cancels his bet within a certain time period (usually 0, 3 or 6 seconds depending on the market) 
+                the bet goes into the state MAKERVOIDED and is void.
+            When a market is settled the orders to in one of the settled states VOID, WON, HALFWON, LOST or HALFLOST.  
+            Decimal market go into the state DECIMALRESULT while the settlement value DecResult will be set.
+
+        Request:
             order_type: 'matched' or 'unmatched'
+
+        Response: list of dictionaries
+            E.g. [{'_UserUMOrderID': 636089384190025705, 
+                   '_UserOrder': {'RunnerID': 2, 'OrderID': 636089384190025711, 'MatchedSubUser': 
+                                   'fairlay_user', 'BidOrAsk': 1, 'MarketID': 84402058841}, 
+                   '_MatchedOrder': {'State': 3, 'Price': 11.534, 'Amount': 8.0, 'MakerCancelTime': 0, 
+                                      'DecResult': 0.0, 'R': 0, 'ID': 636089384190025711, 'Red': 0.0},
+                   'Resolution': 'RUNNER_LOST'
+                  }]
         '''
         max_items = 1500
         start = 0
@@ -294,10 +392,14 @@ class FairlayPythonClient(object):
                 break
             else:
                 start += max_items
+        for o in orders:
+            r = '' if o['_MatchedOrder']['State'] == 0 else self.ORDER_STATE[o['_MatchedOrder']['State']]
+            o['Resolution'] = r
         return orders
 
     def change_orders(self, orders_list=[]):
         '''
+        Request:
             Allows you to create, cancel and alter orders
             Set Pri to 0  to cancel an order
             Set Oid to -1 to create an order
@@ -313,6 +415,11 @@ class FairlayPythonClient(object):
                 Type: 0 -> MAKERTAKER, 1 -> MAKER, 2 -> TAKER
                 Boa: Must be 0 for Bid Orders  and 1 for Ask.  Ask means that you bet on the outcome to happen.
                 Mct: Should be set to 0
+
+        Response: list of dictionaries
+            E.g. [{'_Type': 0, 'Price': 5.33, 'PrivCancelAt': 3155378975999999999, 
+                   'PrivSubUser': '', 'State': 0, 'PrivAmount': 5.0, 'makerCT': 0, 'RemAmount': 5.0, 
+                   'PrivUserID': 1100080, 'PrivID': 636093725357177200, 'BidOrAsk': 1}]
         '''
         if len(orders_list) > 50:
             return
@@ -338,22 +445,36 @@ class FairlayPythonClient(object):
                 pass
             elif 'YError' in response_order:
                 markets_to_cancel.append(orders_list[idx]['Mid'])
-
+                response[idx] = '{"error": "' + response[idx].split(':')[1] + '"}'
         self.cancel_orders_on_markets(markets_to_cancel)
         return [json.loads(x) for x in response]
 
     def get_market(self, market_id):
+        '''
+        Request:
+            market_id: string or int
+
+        Response: 
+            dictionary (see example in get_markets_and_odds above)
+        '''
         message = str(market_id)
         response = self.__send_request('get_market', message)
 
         try:
             market = json.loads(response)
-            market['OrdBStr'] = [json.loads(ob) for ob in market['OrdBStr'].split('~') if ob]
+            self.__parse_market(market)
             return market
         except ValueError:
             return None
 
     def get_odds(self, market_id):
+        '''
+        Request:
+            market_id: string or int
+
+        Response: dictionary
+            E.g. [{'S': 1, 'Bids': [[2.573, 19.0]], 'Asks': [[3.752, 13.0]]}]
+        '''
         message = str(market_id)
         response = self.__send_request('get_orderbook', message)
 
@@ -365,7 +486,9 @@ class FairlayPythonClient(object):
             return []
 
     def create_market(self, data):
-        ''' data dictionary:
+        ''' 
+        Request:
+            data: dictionary
                 competition: string
                 description: string
                 title: string,
@@ -404,30 +527,50 @@ class FairlayPythonClient(object):
         return self.__send_request('create_market', message)
 
     def cancel_orders_on_markets(self, market_ids=[]):
+        '''
+        Response: int (number of cancelled orders)
+        '''
         response = self.__send_request('cancel_orders_on_markets', str([str(x) for x in market_ids]))
         return int(response.split(' ')[0])
 
     def cancel_all_orders(self):
+        '''
+        Response: int (number of cancelled orders)
+        '''
         response = self.__send_request('cancel_all_orders')
         if response:
             return int(response.split(' ')[0])
 
     def set_absence_cancel_policy(self, miliseconds):
+        '''
+        Request:
+            miliseconds: float or string
+
+        Response: bool
+        '''
         response = self.__send_request('set_absence_cancel_policy', str(miliseconds))
         return True if response =='success' else False
 
     def set_force_nonce(self, force):
+        '''
+        Request:
+            force: bool
+
+        Response: bool
+        '''
         force = 'true' if force else 'false'
         response = self.__send_request('set_force_nonce', force)
         return True if response =='success' else False
 
     def set_ready_only(self):
+        '''
+        Response: bool
+        '''
         response = self.__send_request('set_ready_only')
         if 'success' in response:
             return True
 
 # client = FairlayPythonClient()
-# print client.get_odds(82339763895)
 
 
 ###############################################################################
@@ -528,7 +671,6 @@ class FairlayOrderMatching(object):
         '''
         position = {}
         matched = self.client.get_orders('matched')
-        orderbook = self.client.get_odds(market_id)
         
         for order in matched:
             m_id = order['_UserOrder']['MarketID']
