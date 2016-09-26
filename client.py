@@ -578,7 +578,7 @@ class FairlayPythonClient(object):
 
 class FairlayMarketFetcher(object):
     markets = []
-    last_fetch_date = datetime.datetime(2016, 01, 01)
+    last_fetch_date = datetime.datetime(2016, 1, 1)
 
     def __init__(self):
         super(FairlayMarketFetcher, self).__init__()
