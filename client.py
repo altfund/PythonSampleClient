@@ -302,10 +302,10 @@ class FairlayPythonClient(object):
                   'LastSoftCh': '2015-11-30T00:50:09.2443208Z', 'Descr': 'This market resolves to ...',
                   'Title': 'Will OKCoin lose customer funds in 2016?', 'OrdBStr': '~', 'MarketCategory': 'Bitcoin',
                   'Status': 0, '_Type': 2, 'CatID': 40, 'LastCh': '2015-10-30T06:05:00.7541435Z',
-                  'Comp': 'Bad News', 'MarketType': 'TAKER', 'OrdBJSON': [], 'Comm': 0.02,
+                  'Comp': 'Bad News', 'MarketType': 'MONEYLINE', 'OrdBJSON': [], 'Comm': 0.02,
                   'ClosD': '2016-10-01T00:00:00', 'Margin': 10000.0, 'ID': 57650700754, 'MaxVal': 0.0,
-                  'SettlT': 0, 'MinVal': 0.0, 'CreatorName': 'FairMM', 'Pop': 0.0, 'MarketPeriod': 'MAKER',
-                  'SettlD': '2017-01-01T00:00:00', '_Period': 1, 'SettlementType': 'MAKERTAKER'}
+                  'SettlT': 0, 'MinVal': 0.0, 'CreatorName': 'FairMM', 'Pop': 0.0, 'MarketPeriod': 'FIRST_SET',
+                  'SettlD': '2017-01-01T00:00:00', '_Period': 1, 'SettlementType': 'BINARY'}
         '''
 
         if not self.__last_time_check or self.__last_time_check + datetime.timedelta(minutes=10) < datetime.datetime.now():
