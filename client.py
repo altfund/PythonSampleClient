@@ -140,7 +140,9 @@ class FairlayPythonClient(object):
         'set_force_nonce': 44,
         'set_read_only': 49,
         'change_orders': 61,
-        'cancel_orders_on_markets': 83
+        'cancel_orders_on_markets': 83,
+        'change_closing': 84,
+        'settle_market': 86
     }
 
     CONFIG = {
@@ -572,6 +574,53 @@ class FairlayPythonClient(object):
         if response:
             return int(response.split(' ')[0])
 
+    def change_closing(self,market_id,closing_date,resolution_date):
+        '''
+        Request:
+            market_id: Market ID
+            closing_date: Market closing date, string in format YYYY-MM-DDTHH:MM:SS
+            resolution_date: Market resolution date string in format YYYY-MM-DDTHH:MM:SS
+                (Settlement date should be bigger than Closing date)
+
+        Return: "Market time changed"  or some kind of "XError: ..."
+        '''
+
+        dic = {
+            'MID':market_id,
+            'ClosD':closing_date,
+            'SetlD':resolution_date
+        }
+
+        message = json.dumps(dic)
+        return self.__send_request('change_closing', message)
+
+    def settle_market(self,data):
+        '''
+        Request:
+            data: dictionary
+                Mid:  is the market ID
+                Runner:  determines the Runner which won (0 means that the 1st Runner won, 1 means that the 2nd Runner won and so on). If a market shall be voided the Runner must be set to -1
+                Win:  Must be set to 1
+                Half:  should be set to "false". Only needed for  +- 0.25  and +-0.75  soccer  spread and over/under markets. If a market is half won or half lost, set Half to "true";
+                Dec:   If the market is not binary, but has a decimal outcome, this needs to be set to the result.  [Not supported yet]
+                ORed:   Odds reduction  [only for Horse racing - not needed in general]
+
+            example:
+            data = {
+                'Mid' : '9101010101',
+                'Runner' :0,
+                'Win' : 1,
+                'Half' : False,
+                'Dec' : 0.0,
+                'ORed' : 0.0
+            }
+
+        Return  "Market settled" or some kind of "XError: ..."
+        '''
+
+        message = json.dumps(data)
+        return self.__send_request('settle_market', message)
+
     def set_absence_cancel_policy(self, miliseconds):
         '''
         Request:
@@ -601,8 +650,8 @@ class FairlayPythonClient(object):
         if 'success' in response:
             return True
 
-client = FairlayPythonClient()
-print client.get_orders('unmatched')
+# client = FairlayPythonClient()
+# print client.get_orders('unmatched')
 # print '--------'
 # print client.get_orders('matched')
 
